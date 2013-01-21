@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "parallel4", "parallel4\parallel4.vcxproj", "{1595F915-FFA9-4445-AB82-FB37AAC48458}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "parallel3", "parallel3\parallel3.vcxproj", "{CB97F433-34B2-4F63-830D-591170BE5406}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Matrix", "Matrix\Matrix.vcxproj", "{ED13691A-3717-4ADF-AD2B-CA3975154E8A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1595F915-FFA9-4445-AB82-FB37AAC48458}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1595F915-FFA9-4445-AB82-FB37AAC48458}.Debug|Win32.Build.0 = Debug|Win32
+		{1595F915-FFA9-4445-AB82-FB37AAC48458}.Release|Win32.ActiveCfg = Release|Win32
+		{1595F915-FFA9-4445-AB82-FB37AAC48458}.Release|Win32.Build.0 = Release|Win32
+		{CB97F433-34B2-4F63-830D-591170BE5406}.Debug|Win32.ActiveCfg = Debug|Win32
+		{CB97F433-34B2-4F63-830D-591170BE5406}.Debug|Win32.Build.0 = Debug|Win32
+		{CB97F433-34B2-4F63-830D-591170BE5406}.Release|Win32.ActiveCfg = Release|Win32
+		{CB97F433-34B2-4F63-830D-591170BE5406}.Release|Win32.Build.0 = Release|Win32
+		{ED13691A-3717-4ADF-AD2B-CA3975154E8A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{ED13691A-3717-4ADF-AD2B-CA3975154E8A}.Debug|Win32.Build.0 = Debug|Win32
+		{ED13691A-3717-4ADF-AD2B-CA3975154E8A}.Release|Win32.ActiveCfg = Release|Win32
+		{ED13691A-3717-4ADF-AD2B-CA3975154E8A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
