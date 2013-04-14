@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <assert.h>
-#include "Matrix.h"
+#include "..\Matrix\Matrix.h"
 
 #define MAX_ERROR 0.00001
 #define STEP 0.001

@@ -163,6 +163,7 @@ class Matrix
 	
 	Matrix& operator = (const Matrix &x)
 	{
+		if (this == &x) return *this;
 		for (int i = 0; i < n; i++) free(Data[i]);
 		free(Data);
 		

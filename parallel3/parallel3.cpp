@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <assert.h>
-#include "Matrix.h"
+#include "..\Matrix\Matrix.h"
 
 int main(int argc, char *argv[])
 {
