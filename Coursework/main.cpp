@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <assert.h>
 #include "Matrix.h"
+#include "parallel.h"
 
 #define MAX_ERROR 0.00001
 #define STEP 0.001
@@ -18,9 +19,14 @@ void set_X_AbsX(double *x)
 
 int main(int argc, char *argv[])
 {
+	ParallelMatrixMultiplication::Instance()->Init(argc, argv);
+	ParallelMatrixMultiplication::Instance()->Finalize();
+	return 0;
+
 	FILE *f = fopen("t.txt", "r");
 	ASSERT(f != NULL);
 	
+
 	Matrix Ax, Ay, Sx, Sy, R, Kx, Ky, H;
 	
 	Ax = Matrix::ReadFromFile(f);
@@ -51,10 +57,8 @@ int main(int argc, char *argv[])
 	do 
 	{
 		LastZ = Z;
-
 		Y = Y + TP * STEP * (H - R * Z);
 		X = W * Y * -1;
-
 		Z = (X.Transpose() & Y.Transpose()).Transpose();
 		Z.foreach( set_X_AbsX );
 
@@ -87,10 +91,14 @@ bool ParallelMatrixMultiplication::Init(int argc, char **argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &CurrentNode);
 	MPI_Comm_size(MPI_COMM_WORLD, &NumberOfNodes);
 	
+
 	a = (double *)malloc( sizeof(double) * 500 * 500 );
 	b = (double *)malloc( sizeof(double) * 500 * 500 );
 	c = (double *)malloc( sizeof(double) * 500 * 500 );
 
+	printf("%d\n\n", CurrentNode);
+	return true;
+	
 	if (CurrentNode == 0) return true;
 	DispatchEvents();
 	return true;
@@ -126,16 +134,6 @@ void ParallelMatrixMultiplication::DispatchEvents()
 		}
 	}
 }
-
-struct MatrixInfo
-{
-	int A_width;
-	int A_height;
-	int B_width;
-	int B_height;
-	int offset;
-	int rows;
-};
 
 void ParallelMatrixMultiplication::MulHelper()
 {

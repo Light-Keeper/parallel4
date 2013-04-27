@@ -1,3 +1,6 @@
+#ifndef _MATRIX_H
+#define _MATRIX_H
+
 #include <cstdio>
 #include <algorithm>
 #include <assert.h>
@@ -95,9 +98,9 @@ class Matrix
 			while (t < n && T[t][i] == 0) t++;
 			ASSERT(t < n);
 			
-	//		std::swap(T[i], T[t]);
-	//		std::swap(E[i], E[t]);
-			
+			T.SwapRows(i, t);
+			E.SwapRows(i, t);
+
 			double k = T[i][i];
 			for (int j = 0; j < m; j++) 
 					T[i][j] /= k, E[i][j] /= k;
@@ -148,18 +151,11 @@ class Matrix
 	Matrix& operator = (const Matrix &x)
 	{
 		if (this == &x) return *this;
-		for (int i = 0; i < n; i++) free(Data[i]);
 		free(Data);
-		
 		this->n = x.n;
 		this->m = x.m;
-		
-		Data = (double **)malloc(sizeof(double *) * n);
-		for (int i = 0; i < n; i++) 
-			Data[i] = (double *)malloc(sizeof(double) * m);
-		
-		FOREACH Data[i][j] = x[i][j];
-		
+		Data = (double *)malloc(sizeof(*Data) * n * m);	
+		memcpy(Data, x.Data, sizeof(*Data) * n * m);		
 		return *this;
 	}
 	
@@ -168,7 +164,7 @@ class Matrix
 		return &Data[x * this->m];
 	}
 	
-	void foreach( void (*f)(double *value))
+	void foreach( void (*f)(double *value) )
 	{
 		FOREACH f(&*this[i][j]);
 	}
@@ -183,7 +179,7 @@ class Matrix
 		return res;
 	}
 
-	double SqrDifference( Matrix x)
+	double SqrDifference( Matrix x )
 	{
 		ASSERT(n == x.n && m == x.m);
 		double t = 0;
@@ -197,6 +193,16 @@ class Matrix
 	{
 		free(Data);
 	}
+private: 
+
+	void SwapRows(int i, int j)
+	{
+		double *p1 = (*this)[i];
+		double *p2 = (*this)[j];
+		for (int i = 0; i < this->m; i++)
+			std::swap(*p1++, *p2++);
+	}
 };
 
 
+#endif

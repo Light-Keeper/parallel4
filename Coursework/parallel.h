@@ -1,6 +1,20 @@
+#ifndef _PARALLEL_H
+#define _PARALLEL_H
+
 #include <mpi.h>
 
 class Matrix;
+
+struct MatrixInfo
+{
+	int A_width;
+	int A_height;
+	int B_width;
+	int B_height;
+	int offset;
+	int rows;
+};
+
 class ParallelMatrixMultiplication
 {
 	static const int EVENT_MUL = 0;
@@ -31,3 +45,5 @@ public:
 		return instance;
 	}
 };
+
+#endif
