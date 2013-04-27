@@ -163,3 +163,4 @@ pip-log.txt
 .DS_Store
 src/GUI/GeneratedFiles/
 parallel.sdf
+parallel.v11.suo
