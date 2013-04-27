@@ -3,7 +3,6 @@
 #include <assert.h>
 #include "Matrix.h"
 #include "parallel.h"
-#include <windows.h>
 
 #define MAX_ERROR 0.00001
 #define STEP 0.001
@@ -20,13 +19,13 @@ void set_X_AbsX(double *x)
 
 int main(int argc, char *argv[])
 {
-	Sleep(10000);
+//	Sleep(15000);
 	ParallelMatrixMultiplication::Instance()->Init(argc, argv);
 
 	FILE *f = fopen("t.txt", "r");
 	if (f == NULL)
 	{
-		printf("input file not found");
+		printf("input file not found\n");
 		ParallelMatrixMultiplication::Instance()->Finalize();
 		return 0;
 	}
@@ -97,6 +96,7 @@ bool ParallelMatrixMultiplication::Init(int argc, char **argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &CurrentNode);
 	MPI_Comm_size(MPI_COMM_WORLD, &NumberOfNodes);
 	
+//	if (CurrentNode == 0) __asm int 3;
 
 	a = (double *)malloc( sizeof(double) * 500 * 500 );
 	b = (double *)malloc( sizeof(double) * 500 * 500 );
@@ -113,16 +113,20 @@ bool ParallelMatrixMultiplication::Finalize()
 {
 	printf("process %d closed\n", CurrentNode);
 
-	MPI_Finalize();
 	free( a );
 	free( b );
 	free( c );
+		
 	if (CurrentNode == 0)
+	{
 		for (int i = 1; i < NumberOfNodes; i++)
 		{
 			int code = EVENT_EXIT;
 			MPI_Send(&code, 1, MPI_INT, i, TAG_CMD, MPI_COMM_WORLD);
 		}
+	}
+
+	MPI_Finalize();
 	return true;
 }
 
@@ -140,7 +144,7 @@ void ParallelMatrixMultiplication::DispatchEvents()
 			break;
 		case EVENT_EXIT:
 			Finalize();
-			return;
+			exit( 0 );
 		default:
 			break;
 		}

@@ -49,7 +49,17 @@ class Matrix
 	Matrix operator * (const Matrix &x)
 	{
 		ASSERT(m == x.n);
-		return ParallelMatrixMultiplication::Instance()->Mul(*this, x);
+	//	return ParallelMatrixMultiplication::Instance()->Mul(*this, x);
+
+		Matrix s(n, x.m);		
+		for (int i = 0; i < n; i++) 
+			for(int j = 0; j < x.m; j++)
+				{
+					s[i][j] = 0;
+					for (int t = 0; t < x.n; t++) 
+						s[i][j] += (*this)[i][t] * x[t][j];
+				}
+		return s;
 	}
 	
 	Matrix operator + (const Matrix &x)
