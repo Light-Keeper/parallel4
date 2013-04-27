@@ -3,6 +3,7 @@
 #include <assert.h>
 #include "Matrix.h"
 #include "parallel.h"
+#include <windows.h>
 
 #define MAX_ERROR 0.00001
 #define STEP 0.001
@@ -19,12 +20,16 @@ void set_X_AbsX(double *x)
 
 int main(int argc, char *argv[])
 {
+	Sleep(10000);
 	ParallelMatrixMultiplication::Instance()->Init(argc, argv);
-	ParallelMatrixMultiplication::Instance()->Finalize();
-	return 0;
 
 	FILE *f = fopen("t.txt", "r");
-	ASSERT(f != NULL);
+	if (f == NULL)
+	{
+		printf("input file not found");
+		ParallelMatrixMultiplication::Instance()->Finalize();
+		return 0;
+	}
 	
 
 	Matrix Ax, Ay, Sx, Sy, R, Kx, Ky, H;
@@ -79,6 +84,7 @@ int main(int argc, char *argv[])
 		fprintf(f, "Y[ %d ] = %lf\n", i, Y[i][0]);
 
 	fclose(f);	
+	ParallelMatrixMultiplication::Instance()->Finalize();
 	return 0;
 }
 
@@ -96,8 +102,7 @@ bool ParallelMatrixMultiplication::Init(int argc, char **argv)
 	b = (double *)malloc( sizeof(double) * 500 * 500 );
 	c = (double *)malloc( sizeof(double) * 500 * 500 );
 
-	printf("%d\n\n", CurrentNode);
-	return true;
+	printf("process %d started\n", CurrentNode);
 	
 	if (CurrentNode == 0) return true;
 	DispatchEvents();
@@ -106,11 +111,18 @@ bool ParallelMatrixMultiplication::Init(int argc, char **argv)
 
 bool ParallelMatrixMultiplication::Finalize()
 {
+	printf("process %d closed\n", CurrentNode);
+
 	MPI_Finalize();
 	free( a );
 	free( b );
 	free( c );
-
+	if (CurrentNode == 0)
+		for (int i = 1; i < NumberOfNodes; i++)
+		{
+			int code = EVENT_EXIT;
+			MPI_Send(&code, 1, MPI_INT, i, TAG_CMD, MPI_COMM_WORLD);
+		}
 	return true;
 }
 
