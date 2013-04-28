@@ -4,8 +4,9 @@
 #include "Matrix.h"
 #include "parallel.h"
 
-#define MAX_ERROR 0.00001
-#define STEP 0.001
+
+#define MAX_ERROR 0.000001
+#define STEP 0.0001
 
 void set0(double *x)
 {
@@ -14,22 +15,38 @@ void set0(double *x)
 
 void set_X_AbsX(double *x)
 {
-	* x = *x * fabs(*x);
+	* x = 1;;// *x * fabs(*x);
 }
 
-int main(int argc, char *argv[])
+void SetRandomNumber(double *x)
 {
-//	Sleep(15000);
-	ParallelMatrixMultiplication::Instance()->Init(argc, argv);
+	*x = rand() / 3;
+}
 
+int MainThread()
+{
 	FILE *f = fopen("t.txt", "r");
 	if (f == NULL)
 	{
 		printf("input file not found\n");
-		ParallelMatrixMultiplication::Instance()->Finalize();
 		return 0;
 	}
+
+	double runtime = - MPI_Wtime();
 	
+//	if ( 0 )
+	{
+		Matrix m1(1000, 1000);
+		Matrix m2(1000, 4000);
+		m1.foreach( SetRandomNumber );
+		m2.foreach( SetRandomNumber );
+
+		Matrix m3  = m1 * m2;
+		runtime += MPI_Wtime();
+		printf("Calculation finished in %lf sec", runtime);
+		return 0;
+	}
+
 
 	Matrix Ax, Ay, Sx, Sy, R, Kx, Ky, H;
 	
@@ -46,7 +63,6 @@ int main(int argc, char *argv[])
 	H = Matrix::ReadFromFile(f);
 		
 	fclose(f);
-	
 	Matrix W  = Ax.Inverse() * Ay;	
 	Matrix TP = (Sy * Ky - Sx * Kx * W).Inverse() * (Sx & Sy);	
 	Matrix Y(TP.n, 1);
@@ -71,7 +87,7 @@ int main(int argc, char *argv[])
 	f = fopen("out2.txt", "w");
 	ASSERT( f );
 	
-	fprintf(f, "W(%d, %d) = \n", W.n, W.m);
+	fprintf(f, "W(%d, %d) = \n", W.n, W.m);	
 	W.PrintToFile( f );
 	fprintf(f, "TP(%d, %d) = \n", TP.n, TP.m);
 	TP.PrintToFile( f );
@@ -82,13 +98,22 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < Y.n; i++)
 		fprintf(f, "Y[ %d ] = %lf\n", i, Y[i][0]);
 
+	runtime += MPI_Wtime();
+
+	printf("Calculation finished in %lf sec", runtime);
 	fclose(f);	
-	ParallelMatrixMultiplication::Instance()->Finalize();
 	return 0;
 }
 
 
 
+int main(int argc, char *argv[])
+{
+	ParallelMatrixMultiplication::Instance()->Init(argc, argv);
+	MainThread();
+	ParallelMatrixMultiplication::Instance()->Finalize();
+	return 0;
+}
 
 bool ParallelMatrixMultiplication::Init(int argc, char **argv)
 {
@@ -96,14 +121,10 @@ bool ParallelMatrixMultiplication::Init(int argc, char **argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &CurrentNode);
 	MPI_Comm_size(MPI_COMM_WORLD, &NumberOfNodes);
 	
-//	if (CurrentNode == 0) __asm int 3;
+	a = (double *)malloc( sizeof(double) * 5000 * 5000 );
+	b = (double *)malloc( sizeof(double) * 5000 * 5000 );
+	c = (double *)malloc( sizeof(double) * 5000 * 5000 );
 
-	a = (double *)malloc( sizeof(double) * 500 * 500 );
-	b = (double *)malloc( sizeof(double) * 500 * 500 );
-	c = (double *)malloc( sizeof(double) * 500 * 500 );
-
-	printf("process %d started\n", CurrentNode);
-	
 	if (CurrentNode == 0) return true;
 	DispatchEvents();
 	return true;
@@ -111,8 +132,6 @@ bool ParallelMatrixMultiplication::Init(int argc, char **argv)
 
 bool ParallelMatrixMultiplication::Finalize()
 {
-	printf("process %d closed\n", CurrentNode);
-
 	free( a );
 	free( b );
 	free( c );
@@ -157,58 +176,71 @@ void ParallelMatrixMultiplication::MulHelper()
 	MatrixInfo info;
 
 	MPI_Recv(&info,	sizeof(info), MPI_BYTE	, source, TAG_DATA_1, MPI_COMM_WORLD, &status);
-	MPI_Recv(&a,   info.rows * info.A_width, MPI_DOUBLE	, source, TAG_DATA_2, MPI_COMM_WORLD, &status);
-	MPI_Recv(&b,   info.B_height * info.B_width, MPI_DOUBLE	, source, TAG_DATA_3, MPI_COMM_WORLD, &status);
-			
-	for (int i = 0; i < info.rows; i++)
-		for(int j = 0; j < info.B_width; j++)
+	MPI_Recv(a,   info.rows * info.A_width, MPI_DOUBLE	, source, TAG_DATA_2, MPI_COMM_WORLD, &status);
+	MPI_Recv(b,   info.B_height * info.B_width, MPI_DOUBLE	, source, TAG_DATA_3, MPI_COMM_WORLD, &status);
+
+	for ( int i = 0; i < info.rows; i++)
+		for( int j = 0; j < info.B_width; j++)
 		{
-			double *result = &c[i * info.B_width + j];
-			double * _a = &a[i * info.A_width];
-			double * _b = &b[j];
-			*result = 0.0;
+			double result;
+			double * _a = &(a[i * info.A_width]) - 1;
+			double * _b = &(b[j]);
+			result = 0.0;
 			
-			for (int t = 0; t < info.A_width; t++)
+			for ( int t = 0; t < info.A_width; t++)
 			{
-				*result += *_a * *_b;
-				_a++; // следующий столбец
+				result += *(++_a) * *_b;
 				_b += info.B_width; // следующая строка
 			}
+
+			c[i * info.B_width + j] = result;
 		}
 
-	MPI_Send(&info, sizeof(info), MPI_INT, 0, TAG_DATA_1, MPI_COMM_WORLD);
-	MPI_Send(&c, info.rows * info.A_width, MPI_DOUBLE, 0, TAG_DATA_2, MPI_COMM_WORLD);
+	MPI_Send(&info, sizeof(info), MPI_BYTE, 0, TAG_DATA_1, MPI_COMM_WORLD);
+	MPI_Send(c, info.rows * info.B_width, MPI_DOUBLE, 0, TAG_DATA_2, MPI_COMM_WORLD);
 }
 
 Matrix ParallelMatrixMultiplication::Mul(const Matrix &x, const Matrix &y)
 {
 	Matrix result(x.n, y.m);
+	
+	if (NumberOfNodes == 1)
+	{
+		for (int i = 0; i < x.n; i++) 
+			for(int j = 0; j < y.m; j++)
+				{
+					result[i][j] = 0;
+					for (int t = 0; t < x.m; t++) 
+						result[i][j] += x[i][t] * y[t][j];
+				}
+			return result;
+	}
 
 	int averageRow = x.n / (NumberOfNodes - 1); //average rows per worker
 	int	extra = x.n % (NumberOfNodes - 1);  //extra rows
 	MatrixInfo info;
 	info.A_height = x.n;
 	info.A_width = x.m;
-	info.B_height = x.n;
-	info.B_width = x.m;
+	info.B_height = y.n;
+	info.B_width = y.m;
 	info.offset = 0;
 	
-	for (int destination=1; destination <= NumberOfNodes; destination++)
+	for (int destination=1; destination < NumberOfNodes; destination++)
 	{       
 		info.rows = averageRow  + (destination <= extra);
-		MPI_Send(EVENT_MUL, 1, MPI_INT, destination, TAG_CMD, MPI_COMM_WORLD);	
+		int cmd = EVENT_MUL;
+		MPI_Send(&cmd, 1, MPI_INT, destination, TAG_CMD, MPI_COMM_WORLD);	
 		MPI_Send(&info, sizeof(info), MPI_BYTE, destination, TAG_DATA_1, MPI_COMM_WORLD);
-		MPI_Send(&x[info.offset][0], info.rows*x.m, MPI_DOUBLE,destination, TAG_DATA_2, MPI_COMM_WORLD);
-		MPI_Send(&y[0][0], y.n * y.m, MPI_DOUBLE, destination, TAG_DATA_3, MPI_COMM_WORLD);
+		MPI_Send(&(x[info.offset][0]), info.rows*x.m, MPI_DOUBLE,destination, TAG_DATA_2, MPI_COMM_WORLD);
+		MPI_Send(&(y[0][0]), y.n * y.m, MPI_DOUBLE, destination, TAG_DATA_3, MPI_COMM_WORLD);
 		info.offset = info.offset + info.rows;
 	}
 
 		/* wait for results from all worker tasks */
-	for (int i=1; i <= NumberOfNodes; i++)
+	for (int i=1; i < NumberOfNodes; i++)
 	{
 		MPI_Recv(&info, sizeof(info), MPI_BYTE, i, TAG_DATA_1, MPI_COMM_WORLD, &status);
-		MPI_Recv(&result[info.offset][0], info.rows* info.A_width, MPI_DOUBLE, i, TAG_DATA_2, MPI_COMM_WORLD, &status);
+		MPI_Recv(&(result[info.offset][0]), info.rows* info.B_width, MPI_DOUBLE, i, TAG_DATA_2, MPI_COMM_WORLD, &status);
 	}
-
 	return result;
 }

@@ -29,7 +29,7 @@ class Matrix
 		Data = (double *)malloc(sizeof(*Data) * n * m);
 	}
 
-	Matrix(Matrix &x) 
+	Matrix(const Matrix &x) 
 	{
 		this->n = x.n;
 		this->m = x.m;
@@ -49,17 +49,7 @@ class Matrix
 	Matrix operator * (const Matrix &x)
 	{
 		ASSERT(m == x.n);
-	//	return ParallelMatrixMultiplication::Instance()->Mul(*this, x);
-
-		Matrix s(n, x.m);		
-		for (int i = 0; i < n; i++) 
-			for(int j = 0; j < x.m; j++)
-				{
-					s[i][j] = 0;
-					for (int t = 0; t < x.n; t++) 
-						s[i][j] += (*this)[i][t] * x[t][j];
-				}
-		return s;
+		return ParallelMatrixMultiplication::Instance()->Mul(*this, x);
 	}
 	
 	Matrix operator + (const Matrix &x)
@@ -176,7 +166,7 @@ class Matrix
 	
 	void foreach( void (*f)(double *value) )
 	{
-		FOREACH f(&*this[i][j]);
+		FOREACH f( (*this)[i] + j );
 	}
 
 	Matrix Transpose()
@@ -210,9 +200,10 @@ private:
 		double *p1 = (*this)[i];
 		double *p2 = (*this)[j];
 		for (int i = 0; i < this->m; i++)
-			std::swap(*p1++, *p2++);
+			std::swap(*(p1++), *(p2++));
 	}
 };
 
 
 #endif
+
