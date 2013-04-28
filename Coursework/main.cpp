@@ -3,11 +3,12 @@
 #include <assert.h>
 #include "Matrix.h"
 #include "parallel.h"
+#include <cmath>
 
+#define MAX_ERROR 0.00001
+#define STEP 0.001
 
-#define MAX_ERROR 0.000001
-#define STEP 0.0001
-
+// callbacks
 void set0(double *x)
 {
 	*x = 0;
@@ -15,13 +16,15 @@ void set0(double *x)
 
 void set_X_AbsX(double *x)
 {
-	* x = 1;;// *x * fabs(*x);
+	* x =  *x * fabs(*x);
 }
 
 void SetRandomNumber(double *x)
 {
 	*x = rand() / 3;
 }
+
+
 
 int MainThread()
 {
@@ -34,10 +37,11 @@ int MainThread()
 
 	double runtime = - MPI_Wtime();
 	
-//	if ( 0 )
+	// test big matrix multiplication 
+	if ( 0 )
 	{
 		Matrix m1(1000, 1000);
-		Matrix m2(1000, 4000);
+		Matrix m2(1000, 400);
 		m1.foreach( SetRandomNumber );
 		m2.foreach( SetRandomNumber );
 
@@ -49,7 +53,7 @@ int MainThread()
 
 
 	Matrix Ax, Ay, Sx, Sy, R, Kx, Ky, H;
-	
+
 	Ax = Matrix::ReadFromFile(f);
 	Ay = Matrix::ReadFromFile(f);
 	
@@ -109,27 +113,35 @@ int MainThread()
 
 int main(int argc, char *argv[])
 {
+	// initialize MPI
 	ParallelMatrixMultiplication::Instance()->Init(argc, argv);
 	MainThread();
 	ParallelMatrixMultiplication::Instance()->Finalize();
 	return 0;
 }
 
+// this method initializes MPI. It returns only for process with rank = 0.
+// for other it starts DispatchEvents.
 bool ParallelMatrixMultiplication::Init(int argc, char **argv)
 {
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &CurrentNode);
 	MPI_Comm_size(MPI_COMM_WORLD, &NumberOfNodes);
 	
-	a = (double *)malloc( sizeof(double) * 5000 * 5000 );
-	b = (double *)malloc( sizeof(double) * 5000 * 5000 );
-	c = (double *)malloc( sizeof(double) * 5000 * 5000 );
+	// suppouse we have matrizes less then 1000 * 1000
+	a = (double *)malloc( sizeof(double) * 1000 * 1000 );
+	b = (double *)malloc( sizeof(double) * 1000 * 1000 );
+	c = (double *)malloc( sizeof(double) * 1000 * 1000 );
+	assert(a != NULL);
+	assert(b != NULL);
+	assert(c != NULL);
 
-	if (CurrentNode == 0) return true;
+	if (CurrentNode == 0) return true; 
 	DispatchEvents();
 	return true;
 }
 
+// finalize MPI, free memory and exit
 bool ParallelMatrixMultiplication::Finalize()
 {
 	free( a );
@@ -138,6 +150,7 @@ bool ParallelMatrixMultiplication::Finalize()
 		
 	if (CurrentNode == 0)
 	{
+		// send EVENT_EXIT to all other processes
 		for (int i = 1; i < NumberOfNodes; i++)
 		{
 			int code = EVENT_EXIT;
@@ -149,19 +162,22 @@ bool ParallelMatrixMultiplication::Finalize()
 	return true;
 }
 
-
+//waits for commands and starts appropriate routine
 void ParallelMatrixMultiplication::DispatchEvents()
 {
 	while ( 1 )
 	{
+		// get command from process with rank = 0
 		int cmd = 0;
 		MPI_Recv(&cmd, 1, MPI_INT, 0, TAG_CMD, MPI_COMM_WORLD, &status);
 		switch (cmd)
 		{
 		case EVENT_MUL:
+			// process 0 wants us to help him to multiply matrices.
 			MulHelper();
 			break;
 		case EVENT_EXIT:
+			// all is done
 			Finalize();
 			exit( 0 );
 		default:
@@ -170,15 +186,18 @@ void ParallelMatrixMultiplication::DispatchEvents()
 	}
 }
 
+//receive part of first matrix, entire second, and multiply it.
 void ParallelMatrixMultiplication::MulHelper()
 {
 	int source = 0;
 	MatrixInfo info;
 
+	// recceive
 	MPI_Recv(&info,	sizeof(info), MPI_BYTE	, source, TAG_DATA_1, MPI_COMM_WORLD, &status);
 	MPI_Recv(a,   info.rows * info.A_width, MPI_DOUBLE	, source, TAG_DATA_2, MPI_COMM_WORLD, &status);
 	MPI_Recv(b,   info.B_height * info.B_width, MPI_DOUBLE	, source, TAG_DATA_3, MPI_COMM_WORLD, &status);
 
+	// multiply
 	for ( int i = 0; i < info.rows; i++)
 		for( int j = 0; j < info.B_width; j++)
 		{
@@ -190,22 +209,25 @@ void ParallelMatrixMultiplication::MulHelper()
 			for ( int t = 0; t < info.A_width; t++)
 			{
 				result += *(++_a) * *_b;
-				_b += info.B_width; // следующая строка
+				_b += info.B_width; // next row
 			}
 
 			c[i * info.B_width + j] = result;
 		}
 
+	// send result back
 	MPI_Send(&info, sizeof(info), MPI_BYTE, 0, TAG_DATA_1, MPI_COMM_WORLD);
 	MPI_Send(c, info.rows * info.B_width, MPI_DOUBLE, 0, TAG_DATA_2, MPI_COMM_WORLD);
 }
 
+// multiply 2 matrices. call it from main thread. 
 Matrix ParallelMatrixMultiplication::Mul(const Matrix &x, const Matrix &y)
 {
 	Matrix result(x.n, y.m);
 	
 	if (NumberOfNodes == 1)
 	{
+		// only 1 node, make it just here.
 		for (int i = 0; i < x.n; i++) 
 			for(int j = 0; j < y.m; j++)
 				{
@@ -225,6 +247,7 @@ Matrix ParallelMatrixMultiplication::Mul(const Matrix &x, const Matrix &y)
 	info.B_width = y.m;
 	info.offset = 0;
 	
+	// send to each node part of job
 	for (int destination=1; destination < NumberOfNodes; destination++)
 	{       
 		info.rows = averageRow  + (destination <= extra);
@@ -236,7 +259,7 @@ Matrix ParallelMatrixMultiplication::Mul(const Matrix &x, const Matrix &y)
 		info.offset = info.offset + info.rows;
 	}
 
-		/* wait for results from all worker tasks */
+	// wait for results from all worker tasks 
 	for (int i=1; i < NumberOfNodes; i++)
 	{
 		MPI_Recv(&info, sizeof(info), MPI_BYTE, i, TAG_DATA_1, MPI_COMM_WORLD, &status);

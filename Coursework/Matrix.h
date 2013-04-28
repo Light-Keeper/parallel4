@@ -134,6 +134,7 @@ class Matrix
 		}
 	}
 
+	// should be called AppendRight
 	Matrix operator & (const Matrix &x)
 	{
 		Matrix s(n,  m + x.m);
@@ -164,6 +165,7 @@ class Matrix
 		return &Data[x * this->m];
 	}
 	
+	// call given method for each element
 	void foreach( void (*f)(double *value) )
 	{
 		FOREACH f( (*this)[i] + j );
@@ -179,6 +181,7 @@ class Matrix
 		return res;
 	}
 
+	// should be replaced with GetNorm()
 	double SqrDifference( Matrix x )
 	{
 		ASSERT(n == x.n && m == x.m);

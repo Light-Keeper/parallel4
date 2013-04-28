@@ -15,6 +15,7 @@ struct MatrixInfo
 	int rows;
 };
 
+// encapsulates MPI
 class ParallelMatrixMultiplication
 {
 	static const int EVENT_MUL = 0;
@@ -39,6 +40,7 @@ public:
 	bool Finalize();
 	Matrix Mul(const Matrix &x, const Matrix &y);
 
+	// Singleton pattern
 	static ParallelMatrixMultiplication *Instance()
 	{
 		static ParallelMatrixMultiplication *instance = new ParallelMatrixMultiplication();
