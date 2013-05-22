@@ -15,7 +15,7 @@ class Matrix
 	public:
 	int n, m;
 	double *Data;
-	
+
 	Matrix()
 	{
 		n = m = 0;

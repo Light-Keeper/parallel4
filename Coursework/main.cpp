@@ -5,8 +5,8 @@
 #include "parallel.h"
 #include <cmath>
 
-#define MAX_ERROR 0.00001
-#define STEP 0.001
+#define MAX_ERROR 0.000001
+#define STEP 0.1
 
 // callbacks
 void set0(double *x)
@@ -78,7 +78,7 @@ int MainThread()
 	Matrix LastZ = (X.Transpose() & Y.Transpose()).Transpose();
 	Matrix Z(LastZ);
 
-	do 
+	do	
 	{
 		LastZ = Z;
 		Y = Y + TP * STEP * (H - R * Z);
